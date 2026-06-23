@@ -249,5 +249,231 @@ class TestSerialWriteErrorHandling(unittest.TestCase):
         self.assertTrue(result)
 
 
+# ===========================================================================
+# Pulse protocol
+# ===========================================================================
+class TestPulseProtocol(unittest.TestCase):
+
+    def setUp(self):
+        self.window = make_window()
+
+    # --- start ---
+
+    def test_start_pulse_sends_correct_bytes(self):
+        self.window.start_pulse()
+        self.assertIn([10, 0, 0], written_bytes(self.window))
+
+    def test_start_pulse_sends_exactly_one_command(self):
+        self.window.start_pulse()
+        self.assertEqual(len(written_bytes(self.window)), 1)
+
+    def test_start_pulse_command_byte_is_10(self):
+        self.window.start_pulse()
+        sent = written_bytes(self.window)
+        self.assertTrue(any(cmd[0] == 10 for cmd in sent))
+
+    def test_start_pulse_data_bytes_are_zero(self):
+        self.window.start_pulse()
+        cmd = written_bytes(self.window)[0]
+        self.assertEqual(cmd[1], 0)
+        self.assertEqual(cmd[2], 0)
+
+    def test_start_pulse_does_nothing_when_disconnected(self):
+        self.window.serial = None
+        # Must return without raising
+        self.window.start_pulse()
+
+    def test_start_pulse_does_not_send_stop_command(self):
+        self.window.start_pulse()
+        self.assertNotIn([13, 0, 0], written_bytes(self.window))
+
+    # --- stop ---
+
+    def test_stop_pulse_sends_correct_bytes(self):
+        self.window.stop_pulse()
+        self.assertIn([13, 0, 0], written_bytes(self.window))
+
+    def test_stop_pulse_sends_exactly_one_command(self):
+        self.window.stop_pulse()
+        self.assertEqual(len(written_bytes(self.window)), 1)
+
+    def test_stop_pulse_command_byte_is_13(self):
+        self.window.stop_pulse()
+        sent = written_bytes(self.window)
+        self.assertTrue(any(cmd[0] == 13 for cmd in sent))
+
+    def test_stop_pulse_data_bytes_are_zero(self):
+        self.window.stop_pulse()
+        cmd = written_bytes(self.window)[0]
+        self.assertEqual(cmd[1], 0)
+        self.assertEqual(cmd[2], 0)
+
+    def test_stop_pulse_does_nothing_when_disconnected(self):
+        self.window.serial = None
+        self.window.stop_pulse()
+
+    def test_stop_pulse_does_not_send_start_command(self):
+        self.window.stop_pulse()
+        self.assertNotIn([10, 0, 0], written_bytes(self.window))
+
+    # --- start/stop interaction ---
+
+    def test_start_and_stop_pulse_send_distinct_commands(self):
+        self.window.start_pulse()
+        self.window.stop_pulse()
+        sent = written_bytes(self.window)
+        self.assertIn([10, 0, 0], sent)
+        self.assertIn([13, 0, 0], sent)
+        self.assertNotEqual(sent[0], sent[1])
+
+    def test_start_pulse_command_differs_from_stop_pulse_command(self):
+        start_cmd = [10, 0, 0]
+        stop_cmd  = [13, 0, 0]
+        self.assertNotEqual(start_cmd[0], stop_cmd[0])
+
+    def test_start_then_stop_pulse_sends_two_commands_total(self):
+        self.window.start_pulse()
+        self.window.stop_pulse()
+        self.assertEqual(len(written_bytes(self.window)), 2)
+
+    def test_start_then_stop_pulse_order_is_preserved(self):
+        self.window.start_pulse()
+        self.window.stop_pulse()
+        sent = written_bytes(self.window)
+        self.assertEqual(sent[0], [10, 0, 0])
+        self.assertEqual(sent[1], [13, 0, 0])
+
+
+# ===========================================================================
+# Triggered protocol
+# ===========================================================================
+class TestTriggeredProtocol(unittest.TestCase):
+
+    def setUp(self):
+        self.window = make_window()
+
+    # --- start ---
+
+    def test_start_triggered_sends_correct_bytes(self):
+        self.window.start_triggered()
+        self.assertIn([14, 0, 0], written_bytes(self.window))
+
+    def test_start_triggered_sends_exactly_one_command(self):
+        self.window.start_triggered()
+        self.assertEqual(len(written_bytes(self.window)), 1)
+
+    def test_start_triggered_command_byte_is_14(self):
+        self.window.start_triggered()
+        sent = written_bytes(self.window)
+        self.assertTrue(any(cmd[0] == 14 for cmd in sent))
+
+    def test_start_triggered_data_bytes_are_zero(self):
+        self.window.start_triggered()
+        cmd = written_bytes(self.window)[0]
+        self.assertEqual(cmd[1], 0)
+        self.assertEqual(cmd[2], 0)
+
+    def test_start_triggered_does_nothing_when_disconnected(self):
+        self.window.serial = None
+        self.window.start_triggered()
+
+    def test_start_triggered_does_not_send_stop_command(self):
+        self.window.start_triggered()
+        self.assertNotIn([15, 0, 0], written_bytes(self.window))
+
+    # --- stop ---
+
+    def test_stop_triggered_sends_correct_bytes(self):
+        self.window.stop_triggered()
+        self.assertIn([15, 0, 0], written_bytes(self.window))
+
+    def test_stop_triggered_sends_exactly_one_command(self):
+        self.window.stop_triggered()
+        self.assertEqual(len(written_bytes(self.window)), 1)
+
+    def test_stop_triggered_command_byte_is_15(self):
+        self.window.stop_triggered()
+        sent = written_bytes(self.window)
+        self.assertTrue(any(cmd[0] == 15 for cmd in sent))
+
+    def test_stop_triggered_data_bytes_are_zero(self):
+        self.window.stop_triggered()
+        cmd = written_bytes(self.window)[0]
+        self.assertEqual(cmd[1], 0)
+        self.assertEqual(cmd[2], 0)
+
+    def test_stop_triggered_does_nothing_when_disconnected(self):
+        self.window.serial = None
+        self.window.stop_triggered()
+
+    def test_stop_triggered_does_not_send_start_command(self):
+        self.window.stop_triggered()
+        self.assertNotIn([14, 0, 0], written_bytes(self.window))
+
+    # --- start/stop interaction ---
+
+    def test_start_and_stop_triggered_send_distinct_commands(self):
+        self.window.start_triggered()
+        self.window.stop_triggered()
+        sent = written_bytes(self.window)
+        self.assertIn([14, 0, 0], sent)
+        self.assertIn([15, 0, 0], sent)
+        self.assertNotEqual(sent[0], sent[1])
+
+    def test_start_triggered_command_differs_from_stop_triggered_command(self):
+        start_cmd = [14, 0, 0]
+        stop_cmd  = [15, 0, 0]
+        self.assertNotEqual(start_cmd[0], stop_cmd[0])
+
+    def test_start_then_stop_triggered_sends_two_commands_total(self):
+        self.window.start_triggered()
+        self.window.stop_triggered()
+        self.assertEqual(len(written_bytes(self.window)), 2)
+
+    def test_start_then_stop_triggered_order_is_preserved(self):
+        self.window.start_triggered()
+        self.window.stop_triggered()
+        sent = written_bytes(self.window)
+        self.assertEqual(sent[0], [14, 0, 0])
+        self.assertEqual(sent[1], [15, 0, 0])
+
+
+# ===========================================================================
+# Cross-protocol command uniqueness
+# ===========================================================================
+class TestProtocolCommandUniqueness(unittest.TestCase):
+    """
+    Sanity-check that the four protocol command bytes are all distinct,
+    so a firmware mix-up would be caught by the individual tests above.
+    """
+
+    def test_all_four_protocol_command_bytes_are_unique(self):
+        command_bytes = {
+            "start_pulse":     10,
+            "stop_pulse":      13,
+            "start_triggered": 14,
+            "stop_triggered":  15,
+        }
+        values = list(command_bytes.values())
+        self.assertEqual(len(values), len(set(values)),
+                         "Protocol command bytes must all be unique")
+
+    def test_pulse_commands_differ_from_triggered_commands(self):
+        pulse_cmds     = {10, 13}
+        triggered_cmds = {14, 15}
+        self.assertTrue(pulse_cmds.isdisjoint(triggered_cmds))
+
+    def test_protocol_commands_do_not_overlap_with_led_toggle_commands(self):
+        # LED toggle command bytes: 3, 5, 7, 9
+        led_toggle_bytes = {(2 * i) + 1 for i in range(1, 5)}
+        protocol_bytes   = {10, 13, 14, 15}
+        self.assertTrue(led_toggle_bytes.isdisjoint(protocol_bytes))
+
+    def test_protocol_commands_do_not_overlap_with_unit_power_commands(self):
+        unit_power_bytes = {11, 12}
+        protocol_bytes   = {10, 13, 14, 15}
+        self.assertTrue(unit_power_bytes.isdisjoint(protocol_bytes))
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

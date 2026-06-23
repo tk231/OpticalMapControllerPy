@@ -60,6 +60,32 @@ class LEDControllerApp(PyQt6.QtWidgets.QWidget):
 
         main_layout.addWidget(self.all_led_button)
 
+        # --- PULSE PROTOCOL ---
+        pulse_layout = PyQt6.QtWidgets.QHBoxLayout()
+
+        self.pulse_button = PyQt6.QtWidgets.QPushButton("Run Pulse Protocol")
+        self.pulse_button.clicked.connect(self.start_pulse)
+
+        self.stop_pulse_button = PyQt6.QtWidgets.QPushButton("Stop Pulse")
+        self.stop_pulse_button.clicked.connect(self.stop_pulse)
+
+        pulse_layout.addWidget(self.pulse_button)
+        pulse_layout.addWidget(self.stop_pulse_button)
+        main_layout.addLayout(pulse_layout)
+
+        # --- TRIGGERED PROTOCOL ---
+        trig_layout = PyQt6.QtWidgets.QHBoxLayout()
+
+        self.trig_button = PyQt6.QtWidgets.QPushButton("Run Triggered Protocol")
+        self.trig_button.clicked.connect(self.start_triggered)
+
+        self.stop_trig_button = PyQt6.QtWidgets.QPushButton("Stop Triggered")
+        self.stop_trig_button.clicked.connect(self.stop_triggered)
+
+        trig_layout.addWidget(self.trig_button)
+        trig_layout.addWidget(self.stop_trig_button)
+        main_layout.addLayout(trig_layout)
+
         # --- STATUS BAR ---
         self.status_label = PyQt6.QtWidgets.QLabel("Disconnected")
         main_layout.addWidget(self.status_label)
@@ -307,6 +333,45 @@ class LEDControllerApp(PyQt6.QtWidgets.QWidget):
             for group in self.led_groups:
                 if group.toggle_button.isChecked():
                     group.toggle_button.setChecked(False)  # triggers toggle_led_state automatically
+
+    # ==================== PULSE PROTOCOL ====================
+    def start_pulse(self):
+        """
+        Send command to start the free-running pulse protocol on the MCU.
+        Does nothing silently if not connected.
+        """
+        if not self.serial or not self.serial.is_open:
+            return
+        self.serial.write(bytes([10, 0, 0]))
+
+    def stop_pulse(self):
+        """
+        Send command to stop the free-running pulse protocol on the MCU.
+        Does nothing silently if not connected.
+        """
+        if not self.serial or not self.serial.is_open:
+            return
+        self.serial.write(bytes([13, 0, 0]))
+
+    # ==================== TRIGGERED PROTOCOL ====================
+    def start_triggered(self):
+        """
+        Send command to start the externally triggered protocol on the MCU.
+        Does nothing silently if not connected.
+        """
+        if not self.serial or not self.serial.is_open:
+            return
+        self.serial.write(bytes([14, 0, 0]))
+
+    def stop_triggered(self):
+        """
+        Send command to stop the externally triggered protocol on the MCU.
+        Does nothing silently if not connected.
+        """
+        if not self.serial or not self.serial.is_open:
+            return
+        self.serial.write(bytes([15, 0, 0]))
+
 
 def main():
     import sys
