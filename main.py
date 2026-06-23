@@ -129,6 +129,42 @@ class LEDControllerApp(PyQt6.QtWidgets.QWidget):
             button.setText("OFF")
             button.setStyleSheet("background-color: red; color: white;")
 
+    # ==================== SERIAL WRITE HELPER ====================
+    def serial_write(self, data: bytes) -> bool:
+        """
+        Write bytes to the serial port with full error handling.
+        Shows a popup with the error type and message on failure, then disconnects so the UI stays in sync with reality.
+        Returns True on success, False on failure.
+        """
+        try:
+            self.serial.write(data)
+            return True
+
+        except serial.SerialException as e:
+            PyQt6.QtWidgets.QMessageBox.critical(
+                self,
+                f"Serial Error [{type(e).__name__}]",
+                f"Failed to write to serial port.\nError: {e}\nThe port will be disconnected."
+            )
+
+        except OSError as e:
+            PyQt6.QtWidgets.QMessageBox.critical(
+                self,
+                f"OS Error [{type(e).__name__}]",
+                f"OS-level failure while writing to serial port.\n\nError: {e}\n\nThe port will be disconnected."
+            )
+
+        except Exception as e:
+            PyQt6.QtWidgets.QMessageBox.critical(
+                self,
+                f"Unexpected Error [{type(e).__name__}]",
+                f"An unexpected error occurred while writing to the serial port.\n\nError: {e}\n\nThe port will be disconnected."
+            )
+
+        # Any exception reaches here — force a clean disconnect
+        self.connect_toggle.setChecked(False)
+        return False
+
     # ==================== SERIAL PORT HANDLING ====================
     def refresh_ports(self):
         """
@@ -158,6 +194,7 @@ class LEDControllerApp(PyQt6.QtWidgets.QWidget):
                 self.connect_toggle.setText("Disconnect")
                 self.connect_toggle.setStyleSheet("background-color: green; color: white;")
                 self.set_led_controls_enabled(True)
+
             except Exception as e:
                 PyQt6.QtWidgets.QMessageBox.critical(None, "Error", f"Could not connect: {e}")
                 self.status_label.setText("Disconnected")
@@ -182,15 +219,6 @@ class LEDControllerApp(PyQt6.QtWidgets.QWidget):
             self.master_button.setText("Unit OFF")
             self.master_button.setStyleSheet("background-color: red; color: white;")
 
-    # def closeEvent(self, event):
-    #     """
-    #     Ensure COM port is closed on exit.
-    #     """
-    #     if self.serial and self.serial.is_open:
-    #         self.serial.write(bytes([12, 0, 0]))  # Command to turn unit off
-    #         self.serial.close()
-    #     event.accept()
-
     def reset_serial(self):
         if self.serial and self.serial.is_open:
             try:
@@ -209,7 +237,8 @@ class LEDControllerApp(PyQt6.QtWidgets.QWidget):
         if checked:
             self.master_button.setText("Unit ON")
             self.master_button.setStyleSheet("background-color: green; color: white;")
-            self.serial.write(bytes([11, 0, 0]))  # Command to turn unit on
+            if not self.serial.write(bytes([11, 0, 0])):  # Command to turn unit on
+                self.master_button.setChecked(False)
 
         else:
             self.master_button.setText("Unit OFF")
@@ -221,7 +250,11 @@ class LEDControllerApp(PyQt6.QtWidgets.QWidget):
         Send LED updates only for LEDs that are ON.
         """
         if not self.serial or not self.serial.is_open:
-            print("Serial port not open. Connect send voltage command.")
+            PyQt6.QtWidgets.QMessageBox.warning(
+                self,
+                "Warning",
+                "Serial port not open. Cannot send voltage command."
+            )
             return
 
         # Get LED params
